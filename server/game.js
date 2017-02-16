@@ -106,7 +106,7 @@ exports.state = () => {
     .filter(([key]) => key.startsWith('player:'))
     .map(([key, value]) => [key.substring(7), value]);
   const scores = Object.entries(database.scores);
-  scores.sort(([, v1], [, v2]) => v1 < v2);
+  scores.sort(([, v1], [, v2]) => v1 - v2);
   return {
     positions,
     scores,
