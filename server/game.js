@@ -46,7 +46,7 @@ const database = {
 };
 
 exports.addPlayer = (name, callback) => {
-  clent.sismember('usednames', name, (err, res) => {
+  client.sismember('usednames', name, (err, res) => {
     if (err) {
       return callback(err);
     };
@@ -55,14 +55,14 @@ exports.addPlayer = (name, callback) => {
     }
     const multiSubmit = client.multi();
     multiSubmit.sadd('usednames', name);
-    multiSubmit.set(`player:${name}`, randomPoint(WIDTHm HEIGHT).toString());
+    multiSubmit.set(`player:${name}`, randomPoint(WIDTH, HEIGHT).toString());
     multiSubmit.zadd('scores', 0, name);
     multiSubmit.exec((err, res) => {
       if (err) {
         return callback(err);
       }
       console.log(res);
-      return callback(null, !!res.reduce((sum, num => sum && num));
+      return callback(null, !!res.reduce((sum, num) => sum && num));
     });
     return null;
   });
