@@ -27,8 +27,8 @@ io.on('connection', (socket) => {
 
   const nameListener = (name) => {
     const trimmedName = name.trim();
-    game.addPlayer(trimmedName, (err, nameWorks) => {
-      if (nameWorks) {
+    game.addPlayer(trimmedName, (err, goodName) => {
+      if (goodName) {
         io.to(socket.id).emit('welcome');
         game.state((err, res) => {
           io.emit('state', res);
@@ -36,19 +36,18 @@ io.on('connection', (socket) => {
         socket.removeListener('name', nameListener);
         socket.on('move', (direction) => {
           game.move(direction, trimmedName, (err) => {
-            game.state((err,res2) => {
-              io.emit('state', res2);
+            game.state((err, res) => {
+              io.emit('state', res);
             });
           });
-
         });
       } else {
         io.to(socket.id).emit('badname', trimmedName);
       }
-
-    ))};
+    });
+  };
   socket.on('name', nameListener);
-};
+});
 
 // It begins (https://xkcd.com/1656/)
 const port = process.env.PORT || 3000;
