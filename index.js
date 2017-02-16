@@ -30,14 +30,14 @@ io.on('connection', (socket) => {
     game.addPlayer(trimmedName, (err, goodName) => {
       if (goodName) {
         io.to(socket.id).emit('welcome');
-        game.state((err, res) => {
-          io.emit('state', res);
+        game.state((err, state) => {
+          io.emit('state', state);
         });
         socket.removeListener('name', nameListener);
         socket.on('move', (direction) => {
           game.move(direction, trimmedName, (err) => {
-            game.state((err, res) => {
-              io.emit('state', res);
+            game.state((err, state) => {
+              io.emit('state', state);
             });
           });
         });
