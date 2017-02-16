@@ -6,8 +6,15 @@
  *   - move(direction, name)
  *   - state()
  */
+ const redis = require('redis'),
+       client = redis.createClient();
+
+client.on('connect', () => {
+  console.log('connected');
+});
 
 const { clamp, randomPoint, permutation } = require('./gameutil');
+
 
 const WIDTH = 64;
 const HEIGHT = 64;
@@ -30,28 +37,51 @@ const NUM_COINS = 100;
 // coins            hash         { "<row>,<col>": coinvalue }
 // usednames        set          all used names, to check quickly if a name has been used
 //
+
+
 const database = {
   scores: {},
   usednames: new Set(),
   coins: {},
 };
 
-exports.addPlayer = (name) => {
-  if (name.length === 0 || name.length > MAX_PLAYER_NAME_LENGTH || database.usednames.has(name)) {
-    return false;
-  }
-  database.usednames.add(name);
-  database[`player:${name}`] = randomPoint(WIDTH, HEIGHT).toString();
-  database.scores[name] = 0;
-  return true;
+exports.addPlayer = (name, callback) => {
+  clent.sismember('usednames', name, (err, res) => {
+    if(err) {
+      return callback(err);
+    };
+    if(name.length === 0 || name.length > MAX_PLAYER_NAME_LENGTH || res) {
+      return callback(null, false);
+    }
+    const multiSubmit = client.multi();
+    multiSubmit.sadd('usednames', name);
+    multiSubmit.set('player:${name}', randomPoint(WIDTHm HEIGHT).toString());
+    multiSubmit.zadd('scores', 0, name);
+    multiSubmit.exec((err, res) => {
+      if(err) {
+        return callback(err);
+      }
+      console.log(res);
+      return callback(null, !!res.reduce((sum, num => sum && num));
+    });
+    return null;
+  });
 };
 
+
 function placeCoins() {
-  permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
-    const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
-    const index = `${Math.floor(position / WIDTH)},${Math.floor(position % WIDTH)}`;
-    database.coins[index] = coinValue;
-  });
+  client.del('coins', (err) => {
+    console.log(err || 'coins cleared');
+    const multiSubmit = client.multi();
+
+    permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
+      const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
+      const index = `${Math.floor(position / WIDTH)},${Math.floor(position % WIDTH)}`;
+      multiSubmit.hsetnx('coins', index, coinValue);
+    });
+    multiSubmit.exec((err, res) => console.log(err || res));
+  })
+
 }
 
 // Return only the parts of the database relevant to the client. The client only cares about
