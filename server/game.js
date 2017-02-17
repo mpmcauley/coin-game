@@ -47,21 +47,18 @@ const database = {
 
 exports.addPlayer = (name, callback) => {
   client.sismember('usednames', name, (err, res) => {
-    if (err) {
-      return callback(err);
-    };
+    if (err) { return callback(err); }
     if(name.length === 0 || name.length > MAX_PLAYER_NAME_LENGTH || res) {
       return callback(null, false);
     }
+    // Got the multiSubmit idea from Ed. Like it, so I don't have to embed the callbacks
+    // Only one callback needed for all commands
     const multiSubmit = client.multi();
     multiSubmit.sadd('usednames', name);
     multiSubmit.set(`player:${name}`, randomPoint(WIDTH, HEIGHT).toString());
     multiSubmit.zadd('scores', 0, name);
     multiSubmit.exec((err, res) => {
-      if (err) {
-        return callback(err);
-      }
-      console.log(res);
+      if (err) { return callback(err); }
       return callback(null, !!res.reduce((sum, num) => sum && num));
     });
     return null;
@@ -71,47 +68,44 @@ exports.addPlayer = (name, callback) => {
 
 function placeCoins() {
   client.del('coins', (err) => {
-    console.log(err || 'coins cleared');
+    console.log(err);
     const multiSubmit = client.multi();
-
     permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
       const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
       const index = `${Math.floor(position / WIDTH)},${Math.floor(position % WIDTH)}`;
       multiSubmit.hsetnx('coins', index, coinValue);
     });
-    multiSubmit.exec((err, res) => console.log(err || res));
-  })
-
+    multiSubmit.exec((err, res) => {
+      if (err) { console.log('Error adding coins'); }
+    });
+  });
 }
 
 // Return only the parts of the database relevant to the client. The client only cares about
 // the positions of each player, the scores, and the positions (and values) of each coin.
 // Note that we return the scores in sorted order, so the client just has to iteratively
 // walk through an array of name-score pairs and render them.
-exports.state = () => {
+exports.state = (callback) => {
+  const positions = {};
+  //const scores = [];
   client.keys('player:*', (err, names) => {
-    if (err) {
-      return err;
-    }
-    client.mget(names, (err, positions) => {
-      if (err) {
-        return err;
-      }
+    if (err) { return callback(err); }
+    client.mget(names, (err, res) => {
+      if (err) { return callback(err); }
+      names.forEach((name, index) => {
+        positions[name.substring(7)] = res[index];
+      });
+      client.zrevrange('scores', 0, -1, 'WITHSCORES', (err, res2) => {
+        const scores = [];
+        for (let i = 0; i < res2.length; i += 2) {
+          scores.push([res2[i], res2[ i + 1]]);
+        }
+
+      })
     });
     return null;
   });
   return null;
-
-  const positions = Object.entries(database)
-    .filter(([key]) => key.startsWith('player:'))
-    .map(([key, value]) => [key.substring(7), value]);
-  const scores = Object.entries(database.scores);
-  scores.sort(([, v1], [, v2]) => v2 - v1);
-  return {
-    positions,
-    scores,
-    coins: database.coins,
-  };
 };
 
 exports.move = (direction, name) => {
