@@ -68,7 +68,6 @@ exports.addPlayer = (name, callback) => {
 
 function placeCoins() {
   client.del('coins', (err) => {
-    console.log(err);
     const multiSubmit = client.multi();
     permutation(WIDTH * HEIGHT).slice(0, NUM_COINS).forEach((position, i) => {
       const coinValue = (i < 50) ? 1 : (i < 75) ? 2 : (i < 95) ? 5 : 10;
@@ -100,8 +99,13 @@ exports.state = (callback) => {
         for (let i = 0; i < res2.length; i += 2) {
           scores.push([res2[i], res2[ i + 1]]);
         }
-
-      })
+        client.hgetall('coins', (err, coins) => {
+          if (err) { return callback(err); }
+          return callback(null, {positions, scores, coins});
+        });
+        return null;
+      });
+      return null;
     });
     return null;
   });
@@ -113,13 +117,13 @@ exports.move = (direction, name) => {
   if (delta) {
     client.get(`player:${name}`, (err, res) => {
       if (err) {
-        return err;
+        return callback(err);
       }
       const [x,y] = res.split(',');
       const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
       client.hget('coins', `${newX},${newY}`, (err, res) => {
         if (err) {
-          return err;
+          return callback(err);
         }
         if(res) {
           client.zincrby('scores', res, name);
@@ -129,7 +133,7 @@ exports.move = (direction, name) => {
         // When all coins collected, generate a new batch.
         client.hlen('coins', (err, res) => {
           if (err) {
-            return err;
+            return callback(err);
           }
           if (res === 0) {
             placeCoins();
