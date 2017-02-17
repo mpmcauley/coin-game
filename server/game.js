@@ -112,20 +112,21 @@ exports.state = (callback) => {
   return null;
 };
 
-exports.move = (direction, name) => {
+exports.move = (direction, name, callback) => {
   const delta = { U: [0, -1], R: [1, 0], D: [0, 1], L: [-1, 0] }[direction];
   if (delta) {
     client.get(`player:${name}`, (err, res) => {
       if (err) {
         return callback(err);
       }
-      const [x,y] = res.split(',');
-      const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0, HEIGHT - 1)];
+      const [x, y] = res.split(',');
+      const [newX, newY] = [clamp(+x + delta[0], 0, WIDTH - 1), clamp(+y + delta[1], 0,
+        HEIGHT - 1)];
       client.hget('coins', `${newX},${newY}`, (err, res) => {
         if (err) {
           return callback(err);
         }
-        if(res) {
+        if (res) {
           client.zincrby('scores', res, name);
           client.hdel('coins', `${newX},${newY}`);
         }
@@ -137,8 +138,9 @@ exports.move = (direction, name) => {
           }
           if (res === 0) {
             placeCoins();
+            return callback(null, true);
           }
-          return null;
+          return callback(null, true);
         });
         return null;
       });

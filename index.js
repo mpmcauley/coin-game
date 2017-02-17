@@ -28,22 +28,25 @@ io.on('connection', (socket) => {
   const nameListener = (name) => {
     const trimmedName = name.trim();
     game.addPlayer(trimmedName, (err, goodName) => {
-      if (goodName) {
-        io.to(socket.id).emit('welcome');
-        game.state((err, state) => {
-          io.emit('state', state);
-        });
-        socket.removeListener('name', nameListener);
-        socket.on('move', (direction) => {
-          game.move(direction, trimmedName, (err) => {
-            game.state((err, state) => {
-              io.emit('state', state);
-            });
-          });
-        });
-      } else {
+      if (!goodName) {
         io.to(socket.id).emit('badname', trimmedName);
+        return;
       }
+      io.to(socket.id).emit('welcome');
+      game.state((err, state) => {
+        io.emit('state', state);
+      });
+      socket.removeListener('name', nameListener);
+      socket.on('move', (direction) => {
+        game.move(direction, trimmedName, (err) => {
+          if (err) { console.log(err); }
+          game.state((err, state) => {
+            io.emit('state', state);
+          });
+          return null;
+        });
+        return null;
+      });
     });
   };
   socket.on('name', nameListener);
